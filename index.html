@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCアプリインストール申請システム</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Hiragino Sans", "Meiryo", sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1a56db;
+      color: #fff;
+      padding: 18px 32px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.03em; }
+
+    main {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ── カード共通 ── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      padding: 28px 32px;
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a56db;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e8edf5;
+    }
+
+    /* ── フォーム ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 0.85rem; font-weight: 600; color: #555; }
+    label span { color: #e02424; margin-left: 3px; }
+
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fafafa;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: #1a56db;
+      box-shadow: 0 0 0 3px rgba(26,86,219,0.12);
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn-submit {
+      margin-top: 18px;
+      width: 100%;
+      padding: 12px;
+      background: #1a56db;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.04em;
+    }
+    .btn-submit:hover { background: #1547b8; }
+    .btn-submit:active { transform: scale(0.99); }
+
+    /* ── フィルタータブ ── */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .tab {
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 1.5px solid #d1d5db;
+      background: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.2s;
+    }
+    .tab.active, .tab:hover { background: #1a56db; color: #fff; border-color: #1a56db; }
+
+    /* ── 件数バッジ ── */
+    .count-badge {
+      display: inline-block;
+      background: #e8edf5;
+      color: #1a56db;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 1px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+
+    /* ── テーブル ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    thead tr { background: #f0f4fb; }
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #555;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px;
+      border-top: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: #f8f9fc; }
+
+    .reason-cell { max-width: 220px; color: #555; font-size: 0.85rem; }
+
+    /* ── ステータスバッジ ── */
+    .badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+    /* ── アクションボタン ── */
+    .action-btns { display: flex; gap: 6px; }
+    .btn-approve, .btn-reject {
+      padding: 5px 14px;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-approve { background: #10b981; color: #fff; }
+    .btn-approve:hover { opacity: 0.85; }
+    .btn-reject  { background: #ef4444; color: #fff; }
+    .btn-reject:hover  { opacity: 0.85; }
+    .btn-approve:active, .btn-reject:active { transform: scale(0.97); }
+
+    /* ── 空状態 ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    .empty-state svg { margin-bottom: 10px; opacity: 0.35; }
+
+    /* ── トースト ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1a56db;
+      color: #fff;
+      padding: 11px 26px;
+      border-radius: 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 9999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .card { padding: 20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PCアプリインストール申請システム</h1>
+</header>
+
+<main>
+  <!-- 申請フォーム -->
+  <div class="card">
+    <div class="card-title">新規申請</div>
+    <form id="applyForm" novalidate>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="applicant">申請者名<span>*</span></label>
+          <input type="text" id="applicant" placeholder="例：山田 太郎" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label for="appName">アプリ名<span>*</span></label>
+          <input type="text" id="appName" placeholder="例：Visual Studio Code" maxlength="100">
+        </div>
+        <div class="form-group full">
+          <label for="reason">申請理由<span>*</span></label>
+          <textarea id="reason" placeholder="インストールが必要な理由を入力してください" maxlength="500"></textarea>
+        </div>
+      </div>
+      <button type="submit" class="btn-submit">申請する</button>
+    </form>
+  </div>
+
+  <!-- 申請一覧 -->
+  <div class="card">
+    <div class="card-title">
+      申請一覧
+      <span class="count-badge" id="totalCount">0件</span>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active" data-filter="all">すべて</button>
+      <button class="tab" data-filter="pending">審査中</button>
+      <button class="tab" data-filter="approved">承認済み</button>
+      <button class="tab" data-filter="rejected">却下済み</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>申請日時</th>
+            <th>申請者名</th>
+            <th>アプリ名</th>
+            <th>理由</th>
+            <th>ステータス</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+        <div>申請がありません</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const applications = [];
+  let currentFilter = 'all';
+  let nextId = 1;
+
+  const tableBody   = document.getElementById('tableBody');
+  const emptyState  = document.getElementById('emptyState');
+  const totalCount  = document.getElementById('totalCount');
+  const toast       = document.getElementById('toast');
+
+  // ── フォーム送信 ──
+  document.getElementById('applyForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const applicant = document.getElementById('applicant').value.trim();
+    const appName   = document.getElementById('appName').value.trim();
+    const reason    = document.getElementById('reason').value.trim();
+
+    if (!applicant || !appName || !reason) {
+      showToast('すべての項目を入力してください', '#e02424');
+      return;
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' })
+                  + ' ' + now.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
+
+    applications.unshift({ id: nextId++, date: dateStr, applicant, appName, reason, status: 'pending' });
+
+    this.reset();
+    renderTable();
+    showToast('申請を送信しました');
+  });
+
+  // ── フィルタータブ ──
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      currentFilter = this.dataset.filter;
+      renderTable();
+    });
+  });
+
+  // ── テーブル描画 ──
+  function renderTable() {
+    const filtered = applications.filter(a =>
+      currentFilter === 'all' || a.status === currentFilter
+    );
+
+    totalCount.textContent = applications.length + '件';
+
+    if (filtered.length === 0) {
+      tableBody.innerHTML = '';
+      emptyState.style.display = 'block';
+      return;
+    }
+    emptyState.style.display = 'none';
+
+    tableBody.innerHTML = filtered.map((a, i) => `
+      <tr>
+        <td style="color:#aaa;font-size:0.8rem">${filtered.length - i}</td>
+        <td style="white-space:nowrap;font-size:0.83rem;color:#666">${a.date}</td>
+        <td><strong>${escHtml(a.applicant)}</strong></td>
+        <td>${escHtml(a.appName)}</td>
+        <td class="reason-cell" title="${escHtml(a.reason)}">${truncate(escHtml(a.reason), 40)}</td>
+        <td>${badgeHtml(a.status)}</td>
+        <td>${actionHtml(a)}</td>
+      </tr>
+    `).join('');
+  }
+
+  // ── 承認 / 却下 ──
+  function updateStatus(id, status) {
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    app.status = status;
+    renderTable();
+    showToast(status === 'approved' ? '承認しました' : '却下しました',
+              status === 'approved' ? '#10b981' : '#ef4444');
+  }
+
+  // ── ヘルパー ──
+  function badgeHtml(status) {
+    const map = { pending: ['badge-pending','審査中'], approved: ['badge-approved','承認済み'], rejected: ['badge-rejected','却下済み'] };
+    const [cls, label] = map[status];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function actionHtml(a) {
+    if (a.status !== 'pending') return '<span style="color:#ccc;font-size:0.8rem">―</span>';
+    return `<div class="action-btns">
+      <button class="btn-approve" onclick="updateStatus(${a.id},'approved')">承認</button>
+      <button class="btn-reject"  onclick="updateStatus(${a.id},'rejected')">却下</button>
+    </div>`;
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function truncate(str, len) {
+    return str.length > len ? str.slice(0, len) + '…' : str;
+  }
+
+  let toastTimer;
+  function showToast(msg, bg = '#1a56db') {
+    clearTimeout(toastTimer);
+    toast.textContent = msg;
+    toast.style.background = bg;
+    toast.classList.add('show');
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+  }
+
+  // 初期描画
+  renderTable();
+</script>
+</body>
+</html>
